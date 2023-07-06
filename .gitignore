@@ -248,3 +248,7 @@ data/
 lightning_logs/
 example/init_result
 logs/
+*.onnx
+*.pt
+*.png
+.idea

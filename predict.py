@@ -76,7 +76,11 @@ if __name__ == "__main__":
     else:
         model.model.load_state_dict(ckpt)
     model.cuda()
-
+    # height = 320
+    # width = 960
+    # input_L = torch.randn(1, 3, height, width, device='cuda:0')
+    # input_R = torch.randn(1, 3, height, width, device='cuda:0')
+    # model_trace = torch.jit.trace(model.model, (input_L,input_R))
     if "*" in args.images[0]:
         lps = list(sorted(Path(".").glob(args.images[0])))
         rps = list(sorted(Path(".").glob(args.images[1])))
