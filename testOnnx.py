@@ -1,2 +1,3 @@
 import onnxruntime
-nnx_session = onnxruntime.InferenceSession("hitnet_sim960_320.onnx", providers=['TensorrtExecutionProvider', 'CUDAExecutionProvider','CPUExecutionProvider'])
+from onnxmodel import ONNXModel
+model = ONNXModel("hitnet_sf_finalpass_960_640_v12_lf_no_max_ceil.onnx")

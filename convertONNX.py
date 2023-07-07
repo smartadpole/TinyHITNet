@@ -33,24 +33,24 @@ if __name__ == "__main__":
     model1 = model.model
     model1.cuda()
     model1.eval()
-    height = 540
+    height = 640
     width = 960
     input_L = torch.randn(1, 3, height, width, device='cuda:0')
     input_R = torch.randn(1, 3, height, width, device='cuda:0')
     input_names = ['L', 'R']
     output_names = ['disp']
-    pred = model1(input_L, input_R)
+    # pred = model1(input_L, input_R)
     # print(pred)
     torch.onnx.export(
         model1,
         (input_L,input_R),
-        "./hitnet_sf_finalpass_960_540_v11.onnx",
+        "./hitnet_sf_finalpass_960_640_v12_lf_no_max_ceil.onnx",
         verbose=True,
-        opset_version=11,
+        opset_version=12,
         input_names=input_names,
         output_names=output_names)
 
-
+    print("Finish!")
 
     # model = build_model(args)
     # model.eval()

@@ -6,17 +6,22 @@ import math
 
 
 def same_padding_conv(x, w, b, s):
-    out_h = math.ceil(x.size(2) / s[0])
-    out_w = math.ceil(x.size(3) / s[1])
+    # out_h = math.ceil(x.size(2) / s[0])
+    # out_w = math.ceil(x.size(3) / s[1])
+    #
+    # pad_h = max((out_h - 1) * s[0] + w.size(2) - x.size(2), 0)
+    # pad_w = max((out_w - 1) * s[1] + w.size(3) - x.size(3), 0)
+    # print("x.size(2): ", x.size(2), "x.size(3): ", x.size(3))
+    # print("s[0]: ", s[0], "s[1] ", s[1])
+    # print(" w.size(2): ",  w.size(2), "w.size(3) ", w.size(3))
+    # print("out_h: ",out_h , "out_w: ", out_w )
+    # print("pad_h: ",pad_h , "pad_w: ", pad_w )
+    # pad_top = pad_h // 2
+    # pad_bottom = pad_h - pad_top
+    # pad_left = pad_w // 2
+    # pad_right = pad_w - pad_left
 
-    pad_h = max((out_h - 1) * s[0] + w.size(2) - x.size(2), 0)
-    pad_w = max((out_w - 1) * s[1] + w.size(3) - x.size(3), 0)
-    pad_top = pad_h // 2
-    pad_bottom = pad_h - pad_top
-    pad_left = pad_w // 2
-    pad_right = pad_w - pad_left
-
-    x = F.pad(x, (pad_left, pad_right, pad_top, pad_bottom))
+    x = F.pad(x, (1, 1, 1, 1))
     x = F.conv2d(x, w, b, stride=s)
     return x
 
@@ -364,7 +369,7 @@ class HITNet_SF(nn.Module):
         h_2 = self.refine_l1(hyp_up(h_1, 1, 2), lf[1])
         h_3 = self.refine_l2(hyp_up(h_2, 1, 2), lf[0])[:, :, :h, :w]
         # return  h_3[:, 0:1],
-        return  h_3[:, 0:1]
+        return  h_3
         # return h_3[:, 0:1],[
         #         h_0[:, 0:1],
         #         h_1[:, 0:1],
