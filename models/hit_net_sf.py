@@ -11,19 +11,44 @@ def same_padding_conv(x, w, b, s):
     #
     # pad_h = max((out_h - 1) * s[0] + w.size(2) - x.size(2), 0)
     # pad_w = max((out_w - 1) * s[1] + w.size(3) - x.size(3), 0)
-    # print("x.size(2): ", x.size(2), "x.size(3): ", x.size(3))
-    # print("s[0]: ", s[0], "s[1] ", s[1])
-    # print(" w.size(2): ",  w.size(2), "w.size(3) ", w.size(3))
-    # print("out_h: ",out_h , "out_w: ", out_w )
-    # print("pad_h: ",pad_h , "pad_w: ", pad_w )
+    # # print("x.size(2): ", x.size(2), "x.size(3): ", x.size(3))
+    # # print("s[0]: ", s[0], "s[1] ", s[1])
+    # # print(" w.size(2): ",  w.size(2), "w.size(3) ", w.size(3))
+    # # print("out_h: ",out_h , "out_w: ", out_w )
+    # # print("pad_h: ",pad_h , "pad_w: ", pad_w )
     # pad_top = pad_h // 2
     # pad_bottom = pad_h - pad_top
     # pad_left = pad_w // 2
     # pad_right = pad_w - pad_left
+    # x = F.pad(x, (pad_left, pad_right, pad_top, pad_bottom))
+    # print("(pad_left, pad_right, pad_top, pad_bottom): ", pad_left, pad_right, pad_top, pad_bottom)
 
     x = F.pad(x, (1, 1, 1, 1))
     x = F.conv2d(x, w, b, stride=s)
     return x
+
+def same_padding_conv_1_2_0_0(x, w, b, s):
+    # out_h = math.ceil(x.size(2) / s[0])
+    # out_w = math.ceil(x.size(3) / s[1])
+    #
+    # pad_h = max((out_h - 1) * s[0] + w.size(2) - x.size(2), 0)
+    # pad_w = max((out_w - 1) * s[1] + w.size(3) - x.size(3), 0)
+    # # print("x.size(2): ", x.size(2), "x.size(3): ", x.size(3))
+    # # print("s[0]: ", s[0], "s[1] ", s[1])
+    # # print(" w.size(2): ",  w.size(2), "w.size(3) ", w.size(3))
+    # # print("out_h: ",out_h , "out_w: ", out_w )
+    # # print("pad_h: ",pad_h , "pad_w: ", pad_w )
+    # pad_top = pad_h // 2
+    # pad_bottom = pad_h - pad_top
+    # pad_left = pad_w // 2
+    # pad_right = pad_w - pad_left
+    # x = F.pad(x, (pad_left, pad_right, pad_top, pad_bottom))
+    # print("(pad_left, pad_right, pad_top, pad_bottom): ", pad_left, pad_right, pad_top, pad_bottom)
+
+    x = F.pad(x, (1, 2, 0, 0))
+    x = F.conv2d(x, w, b, stride=s)
+    return x
+
 
 
 class SameConv2d(nn.Conv2d):
@@ -54,6 +79,7 @@ class UpsampleBlock(nn.Module):
         x = self.up_conv(input)
         if x.size()[2:] != sc.size()[2:]:
             x = x[:, :, : sc.size(2), : sc.size(3)]
+        print("x.shape: ",x.shape, "sc.shape: ",sc.shape)
         x = torch.cat((x, sc), dim=1)
         x = self.merge_conv(x)
         return x
@@ -241,7 +267,7 @@ class InitDispNet(nn.Module):
         )
         feature_left_tilde = self.relu_conv(feature_left_tilde)
 
-        feature_right_tilde = same_padding_conv(
+        feature_right_tilde = same_padding_conv_1_2_0_0(
             feature_right,
             self.conv_em.weight,
             self.conv_em.bias,

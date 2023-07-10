@@ -37,8 +37,9 @@ def predict(model, lp, rp, width, op):
     left = np2torch(left, bgr=True).cuda().unsqueeze(0)
     right = np2torch(right, bgr=True).cuda().unsqueeze(0)
     pred = model(left, right)
-
-    disp = pred["disp"]
+    print(pred.shape)
+    # disp = pred["disp"]
+    disp = pred[:, 0:1]
     disp = torch.clip(disp / 192 * 255, 0, 255).long()
     disp = apply_colormap(disp)
 
@@ -81,6 +82,7 @@ if __name__ == "__main__":
     # input_L = torch.randn(1, 3, height, width, device='cuda:0')
     # input_R = torch.randn(1, 3, height, width, device='cuda:0')
     # model_trace = torch.jit.trace(model.model, (input_L,input_R))
+    # model_trace.save("hitnet_sf_finalpass.pt")
     if "*" in args.images[0]:
         lps = list(sorted(Path(".").glob(args.images[0])))
         rps = list(sorted(Path(".").glob(args.images[1])))

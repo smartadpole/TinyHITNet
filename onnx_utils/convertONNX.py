@@ -1,3 +1,8 @@
+import sys, os
+
+CURRENT_DIR = os.path.dirname(__file__)
+sys.path.append(os.path.join(CURRENT_DIR, '../../'))
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -33,8 +38,17 @@ if __name__ == "__main__":
     model1 = model.model
     model1.cuda()
     model1.eval()
-    height = 640
-    width = 960
+    height = 400
+    width = 640
+    lp = Path(args.images[0])
+    rp = Path(args.images[1])
+    left = cv2.imread(str(lp), cv2.IMREAD_COLOR)
+    right = cv2.imread(str(rp), cv2.IMREAD_COLOR)
+    left = np2torch(left, bgr=True).cuda().unsqueeze(0)
+    right = np2torch(right, bgr=True).cuda().unsqueeze(0)
+    left = left * 2 - 1
+    right = right * 2 - 1
+    #
     input_L = torch.randn(1, 3, height, width, device='cuda:0')
     input_R = torch.randn(1, 3, height, width, device='cuda:0')
     input_names = ['L', 'R']
@@ -44,32 +58,10 @@ if __name__ == "__main__":
     torch.onnx.export(
         model1,
         (input_L,input_R),
-        "./hitnet_sf_finalpass_960_640_v12_lf_no_max_ceil.onnx",
+        args.output,
         verbose=True,
         opset_version=12,
         input_names=input_names,
         output_names=output_names)
 
     print("Finish!")
-
-    # model = build_model(args)
-    # model.eval()
-    # ckpt = torch.load(args.ckpt)
-    # # for name in ckpt['state_dict']:
-    # #     print('name is {}'.format(name))
-    # model.load_state_dict(ckpt)
-    # device = torch.device("cuda")
-    # model = model.to(device)
-    # input_names = ["input0"]  # ,"input1"
-    # # output_names = ["output0"]
-    # output_names = ["output_%d" % i for i in range(1)]
-    # # output_names = ["output0","output1","output2","output3"]
-    # print(output_names)
-    # left = torch.randn(1, 3, 480, 640).to(device)
-    # right = torch.randn(1, 3, 480, 640).to(device)
-    # a = (left, right)
-    # export_onnx_file = "./HITNet_SF_5.onnx"
-    # # torch_out = torch.onnx._export(model(left,right),(left,right), output_onnx, export_params=True, verbose=False,
-    # #                                input_names=input_names, output_names=output_names)
-    # # torch_out = torch.onnx.export(model, args=(left, right), f=export_onnx_file, verbose=False, input_names=input_names,
-    # #                               output_names=output_names, export_params=True, opset_version=12)
