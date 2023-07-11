@@ -6,6 +6,7 @@ import math
 
 
 def same_padding_conv(x, w, b, s):
+    # implement 1
     # out_h = math.ceil(x.size(2) / s[0])
     # out_w = math.ceil(x.size(3) / s[1])
     #
@@ -23,8 +24,11 @@ def same_padding_conv(x, w, b, s):
     # x = F.pad(x, (pad_left, pad_right, pad_top, pad_bottom))
     # print("(pad_left, pad_right, pad_top, pad_bottom): ", pad_left, pad_right, pad_top, pad_bottom)
 
-    x = F.pad(x, (1, 1, 1, 1))
-    x = F.conv2d(x, w, b, stride=s)
+    # implement 2
+    # x = F.pad(x, (1, 1, 1, 1))
+    # x = F.conv2d(x, w, b, stride=s)
+
+    x = F.conv2d(x, w, b, stride=s, padding=1)
     return x
 
 def same_padding_conv_1_2_0_0(x, w, b, s):
@@ -45,9 +49,12 @@ def same_padding_conv_1_2_0_0(x, w, b, s):
     # x = F.pad(x, (pad_left, pad_right, pad_top, pad_bottom))
     # print("(pad_left, pad_right, pad_top, pad_bottom): ", pad_left, pad_right, pad_top, pad_bottom)
 
-    x = F.pad(x, (1, 2, 0, 0))
-    x = F.conv2d(x, w, b, stride=s)
-    return x
+    # x2 = F.pad(x, (1, 2, 0, 0))
+    # x2 = F.conv2d(x2, w, b, stride=s)
+    # todo: size not right
+    y = F.conv2d(x, w, b, stride=s, padding=(0, 1))
+
+    return y
 
 
 
@@ -63,7 +70,8 @@ class UpsampleBlock(nn.Module):
     def __init__(self, c0, c1):
         super().__init__()
         self.up_conv = nn.Sequential(
-            nn.ConvTranspose2d(c0, c1, 2, 2),
+            nn.ConvTranspose2d(c0, c0, 2, 2),
+            nn.Conv2d(c0, c1, 1, 1),
             nn.LeakyReLU(0.2),
         )
         self.merge_conv = nn.Sequential(
@@ -280,6 +288,7 @@ class InitDispNet(nn.Module):
             feature_right_tilde,
             max_disp,
         )
+
         cost_volume = torch.norm(cost_volume, p=1, dim=1)
         cost_f, d_init = torch.min(cost_volume, dim=1, keepdim=True)
         d_init = d_init.float()
@@ -378,18 +387,20 @@ class HITNet_SF(nn.Module):
         self.refine_l1 = RefinementNet(num_feature[1], 32, res_dilations)
         self.refine_l2 = RefinementNet(num_feature[0], 16, res_dilations)
 
-    def forward(self, left_img, right_img):
+    def forward(self, img):
+        left_img, right_img = img, img
         n, c, h, w = left_img.size()
-        w_pad = (self.align - (w % self.align)) % self.align
-        h_pad = (self.align - (h % self.align)) % self.align
-
-        left_img = F.pad(left_img, (0, w_pad, 0, h_pad))
-        right_img = F.pad(right_img, (0, w_pad, 0, h_pad))
+        # w_pad = (self.align - (w % self.align)) % self.align
+        # h_pad = (self.align - (h % self.align)) % self.align
+        #
+        # left_img = F.pad(left_img, (0, w_pad, 0, h_pad))
+        # right_img = F.pad(right_img, (0, w_pad, 0, h_pad))
 
         lf = self.feature_extractor(left_img)
         rf = self.feature_extractor(right_img)
 
         hi_0, cv_0 = self.init_layer_0(lf[0], rf[0], self.max_disp, lf[2])
+        return cv_0
         h_0 = self.prop_layer_0([hi_0], lf[0], rf[0])
         h_1 = self.refine_l0(h_0, lf[2])
         h_2 = self.refine_l1(hyp_up(h_1, 1, 2), lf[1])

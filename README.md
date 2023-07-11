@@ -19,7 +19,7 @@ This is a **Pytorch** implementations of *"HITNet: Hierarchical Iterative Tile R
     ```shell
     pip install ./ext_op
     ```
-
+warp_and_aggregate
 2) Replace dataset path in **preprocess/plane_fitting.py** and **script/hitnet_sf_finalpass.sh**
 
 3) Robust plane fitting 
