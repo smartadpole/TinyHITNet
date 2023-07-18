@@ -242,16 +242,22 @@ def make_cost_volume_v2(left, right, max_disp):
     x_index = x_index.view(1, 1, 1, 1, -1)
 
     x_index_org = torch.clip(4 * x_index - d_range + 1, 0, right.size(3) - 1)
-    x_index = x_index_org.repeat(right.size(0), right.size(1), 1, right.size(2), 1)
 
-    right_repeat = right.unsqueeze(2).repeat(1, 1, max_disp, 1, 1)
-    right_gathered = torch.gather(right_repeat, dim=-1, index=x_index)
+    # gather
+    # x_index = x_index_org.repeat(right.size(0), right.size(1), 1, right.size(2), 1)
+    # right_repeat = right.unsqueeze(2).repeat(1, 1, max_disp, 1, 1)
+    # right_sliced = torch.gather(right_repeat, dim=-1, index=x_index)
 
-    # index for slice
-    height = right.size(-2)
-    index_slice = x_index_org.squeeze(0).squeeze(0).repeat(1, height, 1)
-    index_last = torch.arange(right.shape[-2])[:, None]
-    right_sliced = right[:, :, index_last, index_slice]
+    x_index_org = x_index_org.squeeze(0).squeeze(0)
+    # slice 1
+    # height = right.size(-2)
+    # index_slice = x_index_org.repeat(1, height, 1)
+    # index_last = torch.arange(right.shape[-2])[:, None]
+    # right_sliced = right[:, :, index_last, index_slice]
+
+    # slice 2
+    tensor_slice1 = right[:, :, :, x_index_org.squeeze(1)]
+    right_sliced = torch.transpose(tensor_slice1, 2, 3)
 
     right = right_sliced
 
@@ -296,6 +302,8 @@ class InitDispNet(nn.Module):
             feature_right_tilde,
             max_disp,
         )
+
+        return cost_volume, 1
 
         cost_volume = torch.norm(cost_volume, p=1, dim=1)
         cost_f, d_init = torch.min(cost_volume, dim=1, keepdim=True)
@@ -408,6 +416,7 @@ class HITNet_SF(nn.Module):
         rf = self.feature_extractor(right_img)
 
         hi_0, cv_0 = self.init_layer_0(lf[0], rf[0], self.max_disp, lf[2])
+        return hi_0
 
         h_0 = self.prop_layer_0([hi_0], lf[0], rf[0])
         h_1 = self.refine_l0(h_0, lf[2])
