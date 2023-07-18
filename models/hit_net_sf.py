@@ -31,6 +31,7 @@ def same_padding_conv(x, w, b, s):
     x = F.conv2d(x, w, b, stride=s, padding=1)
     return x
 
+
 def same_padding_conv_1_2_0_0(x, w, b, s):
     # out_h = math.ceil(x.size(2) / s[0])
     # out_w = math.ceil(x.size(3) / s[1])
@@ -49,13 +50,13 @@ def same_padding_conv_1_2_0_0(x, w, b, s):
     # x = F.pad(x, (pad_left, pad_right, pad_top, pad_bottom))
     # print("(pad_left, pad_right, pad_top, pad_bottom): ", pad_left, pad_right, pad_top, pad_bottom)
 
-    # x2 = F.pad(x, (1, 2, 0, 0))
-    # x2 = F.conv2d(x2, w, b, stride=s)
+    x2 = F.pad(x, (1, 2, 0, 0))
+    x2 = F.conv2d(x2, w, b, stride=s)
+    y = x2
     # todo: size not right
-    y = F.conv2d(x, w, b, stride=s, padding=(0, 1))
+    # y = F.conv2d(x, w, b, stride=s, padding=(0, 1))
 
     return y
-
 
 
 class SameConv2d(nn.Conv2d):
@@ -87,7 +88,7 @@ class UpsampleBlock(nn.Module):
         x = self.up_conv(input)
         if x.size()[2:] != sc.size()[2:]:
             x = x[:, :, : sc.size(2), : sc.size(3)]
-        print("x.shape: ",x.shape, "sc.shape: ",sc.shape)
+        print("x.shape: ", x.shape, "sc.shape: ", sc.shape)
         x = torch.cat((x, sc), dim=1)
         x = self.merge_conv(x)
         return x
@@ -204,7 +205,7 @@ def warp_and_aggregate(hyp, left, right):
         right_warp_left = torch.gather(right, dim=-1, index=index_left.long())
         right_warp_right = torch.gather(right, dim=-1, index=index_right.long())
         right_warp = right_warp_left + index_weight * (
-            right_warp_right - right_warp_left
+                right_warp_right - right_warp_left
         )
         cost.append(torch.sum(torch.abs(left - right_warp), dim=1, keepdim=True))
     cost = torch.cat(cost, dim=1)
@@ -240,12 +241,19 @@ def make_cost_volume_v2(left, right, max_disp):
     x_index = torch.arange(left.size(3), device=left.device)
     x_index = x_index.view(1, 1, 1, 1, -1)
 
-    x_index = torch.clip(4 * x_index - d_range + 1, 0, right.size(3) - 1).repeat(
-        right.size(0), right.size(1), 1, right.size(2), 1
-    )
-    right = torch.gather(
-        right.unsqueeze(2).repeat(1, 1, max_disp, 1, 1), dim=-1, index=x_index
-    )
+    x_index_org = torch.clip(4 * x_index - d_range + 1, 0, right.size(3) - 1)
+    x_index = x_index_org.repeat(right.size(0), right.size(1), 1, right.size(2), 1)
+
+    right_repeat = right.unsqueeze(2).repeat(1, 1, max_disp, 1, 1)
+    right_gathered = torch.gather(right_repeat, dim=-1, index=x_index)
+
+    # index for slice
+    height = right.size(-2)
+    index_slice = x_index_org.squeeze(0).squeeze(0).repeat(1, height, 1)
+    index_last = torch.arange(right.shape[-2])[:, None]
+    right_sliced = right[:, :, index_last, index_slice]
+
+    right = right_sliced
 
     return left.unsqueeze(2) - right
 
@@ -400,13 +408,13 @@ class HITNet_SF(nn.Module):
         rf = self.feature_extractor(right_img)
 
         hi_0, cv_0 = self.init_layer_0(lf[0], rf[0], self.max_disp, lf[2])
-        return cv_0
+
         h_0 = self.prop_layer_0([hi_0], lf[0], rf[0])
         h_1 = self.refine_l0(h_0, lf[2])
         h_2 = self.refine_l1(hyp_up(h_1, 1, 2), lf[1])
         h_3 = self.refine_l2(hyp_up(h_2, 1, 2), lf[0])[:, :, :h, :w]
-        # return  h_3[:, 0:1],
-        return  h_3
+
+        return h_3
         # return h_3[:, 0:1],[
         #         h_0[:, 0:1],
         #         h_1[:, 0:1],
