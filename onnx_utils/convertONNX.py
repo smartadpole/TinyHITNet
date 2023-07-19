@@ -31,7 +31,7 @@ def GetArgs():
 def main():
     args = GetArgs()
 
-    model = HITNet_SF()
+    model = HITNet_SF(max_disp=20)
     model.eval()
 
     input_L = torch.randn(1, 3, H, W, device='cpu')

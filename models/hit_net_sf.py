@@ -155,6 +155,7 @@ def make_warp_coef(scale, device):
     coef_y, coef_x = torch.meshgrid(index, index)
     coef_x = coef_x.reshape(1, -1, 1, 1)
     coef_y = coef_y.reshape(1, -1, 1, 1)
+
     return coef_x, coef_y
 
 
@@ -234,6 +235,61 @@ class ResBlock(nn.Module):
         return x
 
 
+def make_cost_volume_v3(left, right, max_disp):
+    b, c, h, w = left.size()
+    cost_volume = []#left.new_zeros(b, c, max_disp, h, w)
+
+    right = right[:, :, :h, :w]
+    for i in range(max_disp):
+        if i > 0:
+            diff = left[:, :, :, i:] - right[:, :, :, :-i]
+            left_pad = (left.size(3) - diff.size(3)).item()
+            diff = F.pad(diff, (left_pad, 0, 0, 0))
+            cost_volume.append(diff)
+        else:
+            cost_volume.append(left - right)
+
+    cost_volume = torch.stack(cost_volume, dim=2)
+
+    return cost_volume
+
+def make_cost_volume_slice_v2(left, right, max_disp):
+    d_range = torch.arange(max_disp, device=left.device)
+    d_range = d_range.view(1, 1, -1, 1, 1)
+
+    x_index = torch.arange(left.size(3), device=left.device)
+    x_index = x_index.view(1, 1, 1, 1, -1)
+
+    x_index_org = torch.clip(4 * x_index - d_range + 1, 0, right.size(3) - 1)
+    x_index_org = x_index_org.squeeze(0).squeeze(0)
+
+    # slice
+    tensor_slice1 = right[:, :, :, x_index_org.squeeze(1)]
+    right_sliced = torch.transpose(tensor_slice1, 2, 3)
+    right = right_sliced
+
+    return left.unsqueeze(2) - right
+
+def make_cost_volume_slice_v1(left, right, max_disp):
+    d_range = torch.arange(max_disp, device=left.device)
+    d_range = d_range.view(1, 1, -1, 1, 1)
+
+    x_index = torch.arange(left.size(3), device=left.device)
+    x_index = x_index.view(1, 1, 1, 1, -1)
+
+    x_index_org = torch.clip(4 * x_index - d_range + 1, 0, right.size(3) - 1)
+    x_index_org = x_index_org.squeeze(0).squeeze(0)
+
+    # slice
+    height = right.size(-2)
+    index_slice = x_index_org.repeat(1, height, 1)
+    index_last = torch.arange(right.shape[-2])[:, None]
+    right_sliced = right[:, :, index_last, index_slice]
+    right = right_sliced
+
+    return left.unsqueeze(2) - right
+
+
 def make_cost_volume_v2(left, right, max_disp):
     d_range = torch.arange(max_disp, device=left.device)
     d_range = d_range.view(1, 1, -1, 1, 1)
@@ -244,25 +300,12 @@ def make_cost_volume_v2(left, right, max_disp):
     x_index_org = torch.clip(4 * x_index - d_range + 1, 0, right.size(3) - 1)
 
     # gather
-    # x_index = x_index_org.repeat(right.size(0), right.size(1), 1, right.size(2), 1)
-    # right_repeat = right.unsqueeze(2).repeat(1, 1, max_disp, 1, 1)
-    # right_sliced = torch.gather(right_repeat, dim=-1, index=x_index)
-
-    x_index_org = x_index_org.squeeze(0).squeeze(0)
-    # slice 1
-    # height = right.size(-2)
-    # index_slice = x_index_org.repeat(1, height, 1)
-    # index_last = torch.arange(right.shape[-2])[:, None]
-    # right_sliced = right[:, :, index_last, index_slice]
-
-    # slice 2
-    tensor_slice1 = right[:, :, :, x_index_org.squeeze(1)]
-    right_sliced = torch.transpose(tensor_slice1, 2, 3)
-
+    x_index = x_index_org.repeat(right.size(0), right.size(1), 1, right.size(2), 1)
+    right_repeat = right.unsqueeze(2).repeat(1, 1, max_disp, 1, 1)
+    right_sliced = torch.gather(right_repeat, dim=-1, index=x_index)
     right = right_sliced
 
     return left.unsqueeze(2) - right
-
 
 class InitDispNet(nn.Module):
     def __init__(self, cin, cout, cf=None):
@@ -297,13 +340,12 @@ class InitDispNet(nn.Module):
         )
         feature_right_tilde = self.relu_conv(feature_right_tilde)
 
-        cost_volume = make_cost_volume_v2(
+        cost_volume = make_cost_volume_v3(
             feature_left_tilde,
             feature_right_tilde,
             max_disp,
         )
 
-        return cost_volume, 1
 
         cost_volume = torch.norm(cost_volume, p=1, dim=1)
         cost_f, d_init = torch.min(cost_volume, dim=1, keepdim=True)
@@ -342,6 +384,7 @@ class PropagationNet(nn.Module):
 
     def forward_once(self, hyp, left, right):
         x = warp_and_aggregate(hyp, left, right)
+        return x, x
         x = self.conv_neighbors(x)
         x = torch.cat((hyp, x), dim=1)
         x = self.conv1(x)
@@ -386,10 +429,10 @@ class RefinementNet(nn.Module):
 
 
 class HITNet_SF(nn.Module):
-    def __init__(self):
+    def __init__(self, max_disp = 320):
         super().__init__()
         self.align = 4
-        self.max_disp = 320
+        self.max_disp = max_disp
 
         num_feature = [16, 16, 24, 24, 32]
         res_dilations = [1, 1]
@@ -402,6 +445,11 @@ class HITNet_SF(nn.Module):
         self.refine_l0 = RefinementNet(num_feature[2], 32, res_dilations)
         self.refine_l1 = RefinementNet(num_feature[1], 32, res_dilations)
         self.refine_l2 = RefinementNet(num_feature[0], 16, res_dilations)
+        cout = 16
+        self.conv = nn.Sequential(
+            nn.LeakyReLU(0.2),
+            nn.Conv2d(cout, cout, 1),
+            nn.LeakyReLU(0.2),)
 
     def forward(self, img):
         left_img, right_img = img, img
@@ -416,9 +464,10 @@ class HITNet_SF(nn.Module):
         rf = self.feature_extractor(right_img)
 
         hi_0, cv_0 = self.init_layer_0(lf[0], rf[0], self.max_disp, lf[2])
-        return hi_0
 
+        return cv_0
         h_0 = self.prop_layer_0([hi_0], lf[0], rf[0])
+        return h_0
         h_1 = self.refine_l0(h_0, lf[2])
         h_2 = self.refine_l1(hyp_up(h_1, 1, 2), lf[1])
         h_3 = self.refine_l2(hyp_up(h_2, 1, 2), lf[0])[:, :, :h, :w]
