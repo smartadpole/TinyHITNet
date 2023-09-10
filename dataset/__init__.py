@@ -2,7 +2,7 @@ import torch
 from .sceneflow import SceneFlowDataset
 from .kitti2012 import KITTI2012Dataset
 from .kitti2015 import KITTI2015Dataset
-
+from .indemind import INDEMINDataset
 
 def build_dataset(args, training):
     if training:
@@ -36,6 +36,14 @@ def build_dataset(args, training):
             )
         elif d_type == "KITTI2012":
             dataset = KITTI2012Dataset(
+                image_list=d_list,
+                root=d_root,
+                crop_size=data_size,
+                training=training,
+                augmentation=args.data_augmentation,
+            )
+        elif d_type == "INDEMIND":
+            dataset = INDEMINDataset(
                 image_list=d_list,
                 root=d_root,
                 crop_size=data_size,

@@ -142,7 +142,7 @@ class TrainModel(pl.LightningModule):
 if __name__ == "__main__":
     from opt import build_parser
     from pytorch_lightning.plugins import DDPPlugin
-    from pytorch_lightning.callbacks import LearningRateMonitor
+    from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
     from pytorch_lightning import loggers as pl_loggers
     from callback import LogColorDepthMapCallback
 
@@ -166,6 +166,10 @@ if __name__ == "__main__":
         callbacks=[
             LearningRateMonitor(logging_interval="step"),
             LogColorDepthMapCallback(),
+            ModelCheckpoint(dirpath='saved_models/',
+                            filename='model_{epoch:02d}',
+                            save_top_k=-1,
+                            every_n_epochs=1)
         ],
     )
     trainer.fit(model)
