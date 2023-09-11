@@ -6,20 +6,15 @@ import math
 
 
 def same_padding_conv(x, w, b, s):
-    out_h = math.ceil(x.size(2) / s[0])
-    out_w = math.ceil(x.size(3) / s[1])
 
-    pad_h = max((out_h - 1) * s[0] + w.size(2) - x.size(2), 0)
-    pad_w = max((out_w - 1) * s[1] + w.size(3) - x.size(3), 0)
-    pad_top = pad_h // 2
-    pad_bottom = pad_h - pad_top
-    pad_left = pad_w // 2
-    pad_right = pad_w - pad_left
-
-    x = F.pad(x, (pad_left, pad_right, pad_top, pad_bottom))
+    x = F.pad(x, (1, 1, 1, 1))
     x = F.conv2d(x, w, b, stride=s)
     return x
 
+def same_padding_conv_1_2_0_0(x, w, b, s):
+    x = F.pad(x, (1, 2, 0, 0))
+    x = F.conv2d(x, w, b, stride=s)
+    return x
 
 class SameConv2d(nn.Conv2d):
     def __init__(self, *args, **kwargs):
@@ -263,7 +258,7 @@ class LevelInit(nn.Module):
         )
         lt = self.conv_em(lt)
 
-        rt = same_padding_conv(
+        rt = same_padding_conv_1_2_0_0(
             r,
             self.conv_reduce.weight,
             self.conv_reduce.bias,
@@ -382,31 +377,31 @@ class HITNet_KITTI(nn.Module):
         h7 = self.refine[2](hyp_up(h6, 1, 2), lf[-5])[:, :, :h, :w]
 
         return {
-            "tile_size": 4,
-            "disp": h7[:, 0:1],
-            "multi_scale": [
-                h0[:, 0:1],
-                h1[:, 0:1],
-                h2[:, 0:1],
-                h3[:, 0:1],
-                h4[:, 0:1],
-                h5[:, 0:1],
-                h6[:, 0:1],
-                h7[:, 0:1],
-            ],
-            "cost_volume": [cv0, cv1, cv2, cv3, cv4],
-            "slant": [
-                [h0[:, 0:1], h0[:, 1:3]],
-                [h1[:, 0:1], h1[:, 1:3]],
-                [h2[:, 0:1], h2[:, 1:3]],
-                [h3[:, 0:1], h3[:, 1:3]],
-                [h4[:, 0:1], h4[:, 1:3]],
-                [h5[:, 0:1], h5[:, 1:3]],
-                [h6[:, 0:1], h6[:, 1:3]],
-                [h7[:, 0:1], h7[:, 1:3]],
-            ],
-            "init_disp": [di0, di1, di2, di3, di4],
-            "select": [wp1, wp2, wp3, wp4],
+            # "tile_size": 4,
+            "disp": h7[:, 0:1]
+            # "multi_scale": [
+            #     h0[:, 0:1],
+            #     h1[:, 0:1],
+            #     h2[:, 0:1],
+            #     h3[:, 0:1],
+            #     h4[:, 0:1],
+            #     h5[:, 0:1],
+            #     h6[:, 0:1],
+            #     h7[:, 0:1],
+            # ],
+            # "cost_volume": [cv0, cv1, cv2, cv3, cv4],
+            # "slant": [
+            #     [h0[:, 0:1], h0[:, 1:3]],
+            #     [h1[:, 0:1], h1[:, 1:3]],
+            #     [h2[:, 0:1], h2[:, 1:3]],
+            #     [h3[:, 0:1], h3[:, 1:3]],
+            #     [h4[:, 0:1], h4[:, 1:3]],
+            #     [h5[:, 0:1], h5[:, 1:3]],
+            #     [h6[:, 0:1], h6[:, 1:3]],
+            #     [h7[:, 0:1], h7[:, 1:3]],
+            # ],
+            # "init_disp": [di0, di1, di2, di3, di4],
+            # "select": [wp1, wp2, wp3, wp4],
         }
 
 
