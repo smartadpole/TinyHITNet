@@ -166,7 +166,7 @@ if __name__ == "__main__":
         callbacks=[
             LearningRateMonitor(logging_interval="step"),
             LogColorDepthMapCallback(),
-            ModelCheckpoint(dirpath='saved_models/',
+            ModelCheckpoint(dirpath=args.log_dir,
                             filename='model_{epoch:02d}',
                             save_top_k=-1,
                             every_n_epochs=1)
