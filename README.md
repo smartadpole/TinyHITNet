@@ -46,6 +46,15 @@ This is a **Pytorch** implementations of *"HITNet: Hierarchical Iterative Tile R
 ```shell
 python predict.py --model HITNet --ckpt ckpt/{ckpt_name} --images {left.png} {right.png} --output {disp.png}
 ```
+### Convert ONNX
+```shell
+python onnx_utils/convertONNX.py --model HITNet_KITTI --ckpt ckpt/hitnet_kitti_507.ckpt --width 576 --height 360 --output ONNX_SAVE/D13.2.0/hitnet_kitti_epoch_507_576_360
+```
+
+### Test ONNX
+```shell
+python onnx_file --left left.png --right right.png --output_file result.png
+```
 
 ## Citation
 ```
