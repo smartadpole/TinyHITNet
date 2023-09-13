@@ -26,10 +26,10 @@ class LogColorDepthMapCallback(pl.Callback):
             return
 
         pl_module.eval()
-        for name, p in pl_module.named_parameters():
-            pl_module.logger.experiment.add_histogram(
-                name, p, global_step=trainer.global_step
-            )
+        # for name, p in pl_module.named_parameters():
+        #     pl_module.logger.experiment.add_histogram(
+        #         name, p, global_step=trainer.global_step
+        #     )
 
         with torch.no_grad():
             pred = pl_module(batch)
@@ -48,64 +48,64 @@ class LogColorDepthMapCallback(pl.Callback):
                 global_step=trainer.global_step,
             )
 
-            # multi scale
-            for ids, d in enumerate(pred.get("multi_scale", [])):
-                tile_size = pred.get("tile_size", 1)
-                scale = batch["disp"].size(3) // d.size(3)
-                scale_disp = max(1, scale // tile_size)
-                d = (torch.clip(d * scale_disp / 192, 0, 1) * 255).long()
-                d = apply_colormap(d)
-                d = torchvision.utils.make_grid(d, nrow=d.size(0))
-                pl_module.logger.experiment.add_image(
-                    f"disp_{ids}",
-                    d,
-                    global_step=trainer.global_step,
-                )
+            # # multi scale
+            # for ids, d in enumerate(pred.get("multi_scale", [])):
+            #     tile_size = pred.get("tile_size", 1)
+            #     scale = batch["disp"].size(3) // d.size(3)
+            #     scale_disp = max(1, scale // tile_size)
+            #     d = (torch.clip(d * scale_disp / 192, 0, 1) * 255).long()
+            #     d = apply_colormap(d)
+            #     d = torchvision.utils.make_grid(d, nrow=d.size(0))
+            #     pl_module.logger.experiment.add_image(
+            #         f"disp_{ids}",
+            #         d,
+            #         global_step=trainer.global_step,
+            #     )
 
-            # dxy_pred
-            for ids, (d, dxy) in enumerate(pred.get("slant", [])):
-                dxy = dxy_colormap(dxy)
-                dxy = torchvision.utils.make_grid(dxy, nrow=dxy.size(0))
-                pl_module.logger.experiment.add_image(
-                    f"dxy_{ids}",
-                    dxy,
-                    global_step=trainer.global_step,
-                )
+            # # dxy_pred
+            # for ids, (d, dxy) in enumerate(pred.get("slant", [])):
+            #     dxy = dxy_colormap(dxy)
+            #     dxy = torchvision.utils.make_grid(dxy, nrow=dxy.size(0))
+            #     pl_module.logger.experiment.add_image(
+            #         f"dxy_{ids}",
+            #         dxy,
+            #         global_step=trainer.global_step,
+            #     )
 
-            # init_disp
-            for ids, d in enumerate(pred.get("init_disp", [])):
-                tile_size = pred.get("tile_size", 1)
-                scale = batch["disp"].size(3) // d.size(3)
-                scale_disp = max(1, scale // tile_size)
-                d = (torch.clip(d * scale_disp / 192, 0, 1) * 255).long()
-                d = apply_colormap(d)
-                d = torchvision.utils.make_grid(d, nrow=d.size(0))
-                pl_module.logger.experiment.add_image(
-                    f"init_disp_{ids}",
-                    d,
-                    global_step=trainer.global_step,
-                )
+            # # init_disp
+            # for ids, d in enumerate(pred.get("init_disp", [])):
+            #     tile_size = pred.get("tile_size", 1)
+            #     scale = batch["disp"].size(3) // d.size(3)
+            #     scale_disp = max(1, scale // tile_size)
+            #     d = (torch.clip(d * scale_disp / 192, 0, 1) * 255).long()
+            #     d = apply_colormap(d)
+            #     d = torchvision.utils.make_grid(d, nrow=d.size(0))
+            #     pl_module.logger.experiment.add_image(
+            #         f"init_disp_{ids}",
+            #         d,
+            #         global_step=trainer.global_step,
+            #     )
 
-            # dxy_gt
-            if "dxy" in batch:
-                dxy = dxy_colormap(batch["dxy"])
-                dxy = torchvision.utils.make_grid(dxy, nrow=dxy.size(0))
-                pl_module.logger.experiment.add_image(
-                    f"dxy_gt",
-                    dxy,
-                    global_step=trainer.global_step,
-                )
+            # # dxy_gt
+            # if "dxy" in batch:
+            #     dxy = dxy_colormap(batch["dxy"])
+            #     dxy = torchvision.utils.make_grid(dxy, nrow=dxy.size(0))
+            #     pl_module.logger.experiment.add_image(
+            #         f"dxy_gt",
+            #         dxy,
+            #         global_step=trainer.global_step,
+            #     )
 
-            # select
-            for ids, sel in enumerate(pred.get("select", [])):
-                w0, d0 = sel[0]
-                w1, d1 = sel[1]
-                w = torchvision.utils.make_grid((w0 > w1).float(), nrow=w0.size(0))
-                pl_module.logger.experiment.add_image(
-                    f"select_{ids}",
-                    w,
-                    global_step=trainer.global_step,
-                )
+            # # select
+            # for ids, sel in enumerate(pred.get("select", [])):
+            #     w0, d0 = sel[0]
+            #     w1, d1 = sel[1]
+            #     w = torchvision.utils.make_grid((w0 > w1).float(), nrow=w0.size(0))
+            #     pl_module.logger.experiment.add_image(
+            #         f"select_{ids}",
+            #         w,
+            #         global_step=trainer.global_step,
+            #     )
 
         pl_module.logger.experiment.flush()
         pl_module.train()
