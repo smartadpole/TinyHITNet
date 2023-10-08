@@ -360,7 +360,8 @@ class HITNet_KITTI(nn.Module):
         )
 
 
-    def forward(self, left_img, right_img):
+    def forward(self, img):
+        left_img, right_img = img, img
         n, c, h, w = left_img.size()
         w_pad = (self.align - (w % self.align)) % self.align
         h_pad = (self.align - (h % self.align)) % self.align
@@ -381,6 +382,7 @@ class HITNet_KITTI(nn.Module):
         h6 = self.refine[1](hyp_up(h5, 1, 2), lf[-4])
         h7 = self.refine[2](hyp_up(h6, 1, 2), lf[-5])[:, :, :h, :w]
 
+        return h7
         return {
             "tile_size": 4,
             "disp": h7[:, 0:1],

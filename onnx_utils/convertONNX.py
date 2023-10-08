@@ -15,6 +15,7 @@ sys.path.append(os.path.join(CURRENT_DIR, '../'))
 import argparse
 import torch
 from models.hit_net_sf import HITNet_SF
+from models.hit_net_kitti import HITNet_KITTI
 
 W, H = 640, 400
 
@@ -24,6 +25,7 @@ def GetArgs():
     parser.add_argument("--model", type=str, help="model path")
     parser.add_argument("--output", type=str, help="output model path")
     parser.add_argument("--config", type=str, help="config yaml file")
+    parser.add_argument("--type", type=str, default="sf", choices=['sf', 'kitti'], help="config yaml file")
 
     args = parser.parse_args()
     return args
@@ -31,7 +33,10 @@ def GetArgs():
 def main():
     args = GetArgs()
 
-    model = HITNet_SF()
+    if 'sf' == args.type:
+        model = HITNet_SF()
+    else:
+        model = HITNet_KITTI()
     model.eval()
 
     input_L = torch.randn(1, 3, H, W, device='cpu')

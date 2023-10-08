@@ -456,7 +456,8 @@ class HITNetXL_SF(nn.Module):
         self.refine_l1 = RefinementNet(num_feature[1], 64, res_dilations)
         self.refine_l2 = RefinementNet(num_feature[0], 64, res_dilations)
 
-    def forward(self, left_img, right_img):
+    def forward(self, img):
+        left_img, right_img = img, img
         n, c, h, w = left_img.size()
         w_pad = (self.align - (w % self.align)) % self.align
         h_pad = (self.align - (h % self.align)) % self.align
