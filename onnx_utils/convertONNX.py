@@ -17,7 +17,7 @@ import torch
 from models.hit_net_sf import HITNet_SF
 from models.hit_net_kitti import HITNet_KITTI
 
-W, H = 640, 400
+W, H = 640, 384
 
 def GetArgs():
     parser = argparse.ArgumentParser(description="",
@@ -55,6 +55,7 @@ def main():
         do_constant_folding=True,  # whether to execute constant folding for optimization
         input_names=input_names,
         output_names=output_names)
+    print("save model to {}".format(args.output))
 
 
 if __name__ == '__main__':

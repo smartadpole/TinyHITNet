@@ -16,8 +16,9 @@ def same_padding_conv(x, w, b, s):
     pad_left = pad_w // 2
     pad_right = pad_w - pad_left
 
-    x = F.pad(x, (pad_left, pad_right, pad_top, pad_bottom))
-    x = F.conv2d(x, w, b, stride=s)
+    # x = F.pad(x, (pad_left, pad_right, pad_top, pad_bottom))
+    # x = F.conv2d(x, w, b, stride=s)
+    x = F.conv2d(x, w, b, stride=s, padding=1)
     return x
 
 
