@@ -1,5 +1,5 @@
 python3 train.py \
---log_dir logs \
+--log_dir runs/D13.1.2 \
 --exp_name hitnet_indemind \
 --model HITNet_SF \
 --gpus 1 \
