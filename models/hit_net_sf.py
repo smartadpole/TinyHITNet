@@ -395,7 +395,7 @@ class HITNet_SF(nn.Module):
         h_2 = self.refine_l1(hyp_up(h_1, 1, 2), lf[1])
         h_3 = self.refine_l2(hyp_up(h_2, 1, 2), lf[0])[:, :, :h, :w]
         # return  h_3[:, 0:1],
-        return  h_3
+        return  {"disp": h_3[:, 0:1]}
         # return h_3[:, 0:1],[
         #         h_0[:, 0:1],
         #         h_1[:, 0:1],
@@ -461,7 +461,7 @@ class HITNetXL_SF(nn.Module):
         h_1 = self.refine_l0(h_0, lf[2])
         h_2 = self.refine_l1(hyp_up(h_1, 1, 2), lf[1])
         h_3 = self.refine_l2(hyp_up(h_2, 1, 2), lf[0])[:, :, :h, :w]
-
+        return {"disp": h_3[:, 0:1]}
         return {
             "tile_size": 4,
             "disp": h_3[:, 0:1],
