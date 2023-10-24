@@ -21,13 +21,15 @@ from predict import PredictModel
 
 def get_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", type=str, default="HITNet_KITTI")
+    parser.add_argument("--model", type=str, default="HITNet_KITTI", choices=['HITNet_KITTI', 'HITNet_SF'])
     parser.add_argument("--ckpt", required=True)
     parser.add_argument("--width", type=int, default=None)
     parser.add_argument("--height", type=int, default=None)
     parser.add_argument("--output", default="./")
     args = parser.parse_args()
     return args
+
+
 if __name__ == "__main__":
     args = get_parser()
 
@@ -43,15 +45,14 @@ if __name__ == "__main__":
     height = args.height
     width = args.width
 
-    input_L = torch.randn(1, 3, height, width, device='cuda:0')
-    input_R = torch.randn(1, 3, height, width, device='cuda:0')
-    input_names = ['L', 'R']
+    input_L = torch.randn(1, 3, height, width * 2, device='cuda:0')
+    input_names = ['left']
     output_names = ['disp']
     # pred = model1(input_L, input_R)
     # print(pred)
     torch.onnx.export(
         model1,
-        (input_L,input_R),
+        input_L,
         args.output,
         verbose=True,
         opset_version=12,
