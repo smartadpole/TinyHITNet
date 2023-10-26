@@ -47,7 +47,7 @@ if __name__ == "__main__":
 
     input_L = torch.randn(1, 3, height, width * 2, device='cuda:0')
     input_names = ['left']
-    output_names = ['disp']
+    output_names = ['output']
     # pred = model1(input_L, input_R)
     # print(pred)
     torch.onnx.export(
