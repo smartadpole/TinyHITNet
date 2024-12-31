@@ -3,21 +3,13 @@ import sys, os
 CURRENT_DIR = os.path.dirname(__file__)
 sys.path.append(os.path.join(CURRENT_DIR, '../'))
 import cv2
-
-import torchvision
-from pathlib import Path
-from models.hit_net_sf import HITNet_SF, HITNetXL_SF
-from dataset.utils import np2torch
-from colormap import apply_colormap, dxy_colormap
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import pytorch_lightning as pl
 import argparse
-from models import build_model
 
 from predict import PredictModel
-
+from tools.file import MkdirSimple, ReadImageList
+from onnxmodel import ONNXModel
+import time
 
 def get_parser():
     parser = argparse.ArgumentParser()
@@ -25,12 +17,51 @@ def get_parser():
     parser.add_argument("--ckpt", required=True)
     parser.add_argument("--width", type=int, default=None)
     parser.add_argument("--height", type=int, default=None)
+    parser.add_argument("--image", type=str, help="test image file or directory")
     parser.add_argument("--output", default="./")
     args = parser.parse_args()
     return args
 
 
-if __name__ == "__main__":
+def test_onnx(img_path, model):
+    img_org = cv2.imread(img_path)
+    img = cv2.resize(img_org, (W, H), cv2.INTER_LANCZOS4)
+    mean = [0.45, 0.45, 0.45]
+    std = [0.225, 0.225, 0.225]
+    img = img / 255
+    img = np.subtract(img, mean)
+    img = np.divide(img, std)
+    img = img.transpose(2, 0, 1)
+    img = np.expand_dims(img, axis=0).astype("float32")
+
+    start_time = time.time()
+    output = model.forward(img)
+    end_time = time.time()
+    print(f"Execution time: {(end_time - start_time) * 1000:.2f} ms")
+    dis_array = output[0][0][0]
+    dis_array = (dis_array - dis_array.min()) / (dis_array.max() - dis_array.min()) * 255.0
+    dis_array = dis_array.astype("uint8")
+
+    depth = cv2.resize(dis_array, (img_org.shape[1], img_org.shape[0]))
+    depth = cv2.applyColorMap(cv2.convertScaleAbs(depth, 1), cv2.COLORMAP_PARULA)
+    combined_img = np.vstack((img_org, depth))
+
+    return combined_img, depth
+
+def test_dir(image_dir, model_file, output_dir):
+    model = ONNXModel(model_file)
+    img_list = ReadImageList(image_dir)
+    print("test image number: ", len(img_list))
+    for file in img_list:
+        image, depth = test_onnx(file, model)
+        depth_file = os.path.join(output_dir, 'depth', os.path.basename(file))
+        concat_file = os.path.join(output_dir, 'concat', os.path.basename(file))
+        MkdirSimple(depth_file)
+        MkdirSimple(concat_file)
+        cv2.imwrite(concat_file, image)
+        cv2.imwrite(depth_file, depth)
+
+def main():
     args = get_parser()
 
     model = PredictModel(**vars(args)).eval()
@@ -39,24 +70,30 @@ if __name__ == "__main__":
         model.load_state_dict(ckpt["state_dict"])
     else:
         model.model.load_state_dict(ckpt)
-    model1 = model.model
-    model1.cuda()
-    model1.eval()
+    model = model.model
+    model.cuda()
+    model.eval()
     height = args.height
     width = args.width
 
-    input_L = torch.randn(1, 3, height, width * 2, device='cuda:0')
+    onnx_input = torch.randn(1, 3, height, width * 2, device='cuda:0')
     input_names = ['left']
     output_names = ['output']
-    # pred = model1(input_L, input_R)
-    # print(pred)
-    torch.onnx.export(
-        model1,
-        input_L,
-        args.output,
-        verbose=True,
-        opset_version=12,
-        input_names=input_names,
-        output_names=output_names)
 
-    print("Finish!")
+    MkdirSimple(args.output)
+    onnx_file = os.path.join(args.output, os.path.splitext(os.path.basename(args.ckpt))[0] + ".onnx")
+    torch.onnx.export(model,
+                      onnx_input,
+                      onnx_file,
+                      # where to save the model (can be a file or file-like object)
+                      export_params=True,  # store the trained parameter weights inside the model file
+                      opset_version=11,  # the ONNX version to export the model to
+                      do_constant_folding=True,  # whether to execute constant folding for optimization
+                      input_names=input_names,
+                      output_names=output_names)
+
+    test_dir(args.image, onnx_file, args.output)
+
+
+if __name__ == '__main__':
+    main()

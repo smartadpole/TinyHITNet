@@ -25,12 +25,34 @@ import onnxruntime
 class ONNXModel():
     def __init__(self, onnx_file):
         self.onnx_session = onnxruntime.InferenceSession(onnx_file, providers=['TensorrtExecutionProvider', 'CUDAExecutionProvider',
-                                                           'CPUExecutionProvider'])
+                                                                               'CPUExecutionProvider'])
+
+        print(f"ONNX Runtime version: {onnxruntime.__version__}")
+        print(f"Device: {onnxruntime.get_device()}")
+        print(f"Available providers: {self.onnx_session.get_providers()}")
 
         self.input_name = self.get_input_name(self.onnx_session)
         self.output_name = self.get_output_name(self.onnx_session)
-        print("input_name:{}".format(self.input_name))
-        print("output_name:{}".format(self.output_name))
+        self.print_IO()
+
+    def print_IO(self,):
+        # 查看模型的输入信息
+        print("Model Inputs:")
+        for input in self.onnx_session.get_inputs():
+            print(f"Name: {input.name}")
+            print(f"Shape: {input.shape}")
+            print(f"Data Type: {input.type}")
+            print("-" * 50)
+            break
+
+        # 查看模型的输出信息
+        print("Model Outputs:")
+        for output in self.onnx_session.get_outputs():
+            print(f"Name: {output.name}")
+            print(f"Shape: {output.shape}")
+            print(f"Data Type: {output.type}")
+            print("-" * 50)
+            break
 
     def get_output_name(self, onnx_session):
         output_name = []
@@ -50,23 +72,8 @@ class ONNXModel():
             input_feed[name] = image
         return input_feed
 
-    def get_input_feed2(self, input_name, images):
-        input_feed = {}
-        for name, image in zip(input_name, images):
-            input_feed[name] = image
-        return input_feed
-
     def forward(self, image:np.ndarray):
         input_feed = self.get_input_feed(self.input_name, image)
-        for index in input_feed:
-            print("key: ", index," : ", input_feed[index].shape)
-        scores = self.onnx_session.run(self.output_name, input_feed=input_feed)
-        return scores
-
-    def forward2(self, images):
-        input_feed = self.get_input_feed2(self.input_name, images)
-        for index in input_feed:
-            print("key: ", index," : ", input_feed[index].shape)
         scores = self.onnx_session.run(self.output_name, input_feed=input_feed)
         return scores
 
