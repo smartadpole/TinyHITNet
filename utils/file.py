@@ -10,7 +10,7 @@
 import os
 import re
 
-__all__ = ["FILE_SUFFIX", "Walk", "MkdirSimple", "WriteTxt", "WalkImage", "GetImages", 'ReadImageList']
+__all__ = ["FILE_SUFFIX", "Walk", "MkdirSimple", "WriteTxt", "WalkImage", "GetImages", 'ReadImageList', 'match_stereo_file']
 
 FILE_SUFFIX = ['jpg', 'png', 'jpeg', 'bmp', 'tiff']
 
@@ -68,3 +68,15 @@ def GetImages(path):
         raise Exception("Can not find path: {}".format(path))
 
     return paths, root_len
+
+def match_stereo_file(left_path, right_path):
+    left_list = ReadImageList(left_path)
+    right_list = ReadImageList(right_path)
+
+    common_files = set(os.path.relpath(file, start=os.path.commonpath(left_list)) for file in left_list).intersection(
+        os.path.relpath(file, start=os.path.commonpath(right_list)) for file in right_list)
+    left_list[:] = [file for file in left_list if
+                    os.path.relpath(file, start=os.path.commonpath(left_list)) in common_files]
+    right_list[:] = [file for file in right_list if
+                     os.path.relpath(file, start=os.path.commonpath(right_list)) in common_files]
+    return left_list, right_list

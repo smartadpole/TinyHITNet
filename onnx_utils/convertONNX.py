@@ -6,10 +6,11 @@ import cv2
 import torch
 import argparse
 from predict import PredictModel
-from tools.file import MkdirSimple, ReadImageList
+from utils.file import MkdirSimple, ReadImageList
 from onnxmodel import ONNXModel
 import time
 import numpy as np
+from onnx_utils.onnx_test import test_dir
 
 def get_parser():
     parser = argparse.ArgumentParser()
@@ -17,50 +18,12 @@ def get_parser():
     parser.add_argument("--ckpt", required=True)
     parser.add_argument("--width", type=int, default=None)
     parser.add_argument("--height", type=int, default=None)
-    parser.add_argument("--image", type=str, help="test image file or directory")
+    parser.add_argument("--left_image", type=str, default="", help="test image left file or directory")
+    parser.add_argument('--right_image', type=str, default="", help="test image right file or directory")
     parser.add_argument("--output", default="./")
+    parser.add_argument("--test", action="store_true", help="test model")
     args = parser.parse_args()
     return args
-
-
-def test_onnx(img_path, model, width=644, height=392):
-    img_org = cv2.imread(img_path)
-    img = cv2.resize(img_org, (width, height), cv2.INTER_LANCZOS4)
-    mean = [0.45, 0.45, 0.45]
-    std = [0.225, 0.225, 0.225]
-    img = img / 255
-    img = np.subtract(img, mean)
-    img = np.divide(img, std)
-    img = np.hstack([img, img])
-    img = img.transpose(2, 0, 1)
-    img = np.expand_dims(img, axis=0).astype("float32")
-
-    start_time = time.time()
-    output = model.forward(img)
-    end_time = time.time()
-    print(f"Execution time: {(end_time - start_time) * 1000:.2f} ms")
-    dis_array = output[0][0][0]
-    dis_array = (dis_array - dis_array.min()) / (dis_array.max() - dis_array.min()) * 255.0
-    dis_array = dis_array.astype("uint8")
-
-    depth = cv2.resize(dis_array, (img_org.shape[1], img_org.shape[0]))
-    depth = cv2.applyColorMap(cv2.convertScaleAbs(depth, 1), cv2.COLORMAP_PARULA)
-    combined_img = np.vstack((img_org, depth))
-
-    return combined_img, depth
-
-def test_dir(image_dir, model_file, output_dir, width, height):
-    model = ONNXModel(model_file)
-    img_list = ReadImageList(image_dir)
-    print("test image number: ", len(img_list))
-    for file in img_list:
-        image, depth = test_onnx(file, model, width, height)
-        depth_file = os.path.join(output_dir, 'depth', os.path.basename(file))
-        concat_file = os.path.join(output_dir, 'concat', os.path.basename(file))
-        MkdirSimple(depth_file)
-        MkdirSimple(concat_file)
-        cv2.imwrite(concat_file, image)
-        cv2.imwrite(depth_file, depth)
 
 def main():
     args = get_parser()
@@ -81,8 +44,10 @@ def main():
     input_names = ['left']
     output_names = ['output']
 
-    MkdirSimple(args.output)
-    onnx_file = os.path.join(args.output, os.path.splitext(os.path.basename(args.ckpt))[0] + ".onnx")
+    model_name = os.path.splitext(os.path.basename(args.ckpt))[0].replace(" ", "_")
+    output = os.path.join(args.output, model_name, f'{args.width}_{args.height}')
+    onnx_file = os.path.join(output, f'hitnet_{args.width}_{args.height}_{model_name}_12.onnx')
+    MkdirSimple(output)
     torch.onnx.export(model,
                       onnx_input,
                       onnx_file,
@@ -93,7 +58,9 @@ def main():
                       input_names=input_names,
                       output_names=output_names)
 
-    test_dir(args.image, onnx_file, args.output, args.width, args.height)
+    print("export onnx to {}".format(onnx_file))
+    if args.test:
+        test_dir(onnx_file, [args.left_image, args.right_image], output)
 
 
 if __name__ == '__main__':
